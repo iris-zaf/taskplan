@@ -110,11 +110,9 @@ class GuestTest extends TestCase
     {
         $user = User::factory()->create();
         $event = $this->makeEvent($user);
-        $guest = $event->guests()->create([
-            'name' => 'Alex',
-            'email' => 'alex@example.com',
-            'checked_in_at' => now(),
-        ]);
+        $guest = $event->guests()->create(['name' => 'Alex', 'email' => 'alex@example.com']);
+        $guest->checked_in_at = now();
+        $guest->save();
 
         Sanctum::actingAs($user);
 
