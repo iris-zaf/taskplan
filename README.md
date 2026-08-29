@@ -1,58 +1,70 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# EventraPlan
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-stack event planning app: create events, manage a guest list per event, generate a QR code for each guest, and check them in at the door by scanning it.
 
-## About Laravel
+**Live app:** [eventraplan.netlify.app](https://eventraplan.netlify.app)
+**Frontend repo:** [github.com/iris-zaf/taskplan-frontend](https://github.com/iris-zaf/taskplan-frontend)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+![Tests](https://github.com/iris-zaf/taskplan/actions/workflows/tests.yml/badge.svg)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## What it does
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Register/log in, and manage your own events . Every account only ever sees its own data.
+- Create, edit, delete, search, filter, and sort events.
+- Add guests (name + email) to an event; each guest gets a unique QR code.
+- Share a guest's QR code by downloading it as an image, or via a public ticket link (`/ticket/:code`) that needs no login
+- Scan guest QR codes from a dedicated check-in page to mark attendance.
 
-## Learning Laravel
+## Architecture
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+React (Vite)  --->  Laravel API  --->  MySQL
+  Netlify           Render (Docker:        Aiven
+                     nginx + PHP-FPM)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+- **Frontend** : React 19 SPA, deployed on Netlify.
+- **Backend** :  Laravel API, deployed on Render. It runs behind a real web server setup (not Laravel's simple built-in one, which can only handle one visitor at a time and would fail under real traffic).- **Database** — MySQL hosted on Aiven.
 
-## Contributing
+## Tech stack
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Backend:** Laravel 13, PHP 8.3, Laravel Sanctum (token auth), MySQL, PHPUnit
+**Frontend:** React 19, Vite, React Router, Bootstrap 5, Framer Motion, SweetAlert2, `qrcode.react`, `html5-qrcode`
+**Infrastructure:** Render (API hosting), Netlify (frontend hosting), Aiven (the MySQL db), GitHub Actions (CI)
 
-## Code of Conduct
+## API overview
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+All routes are prefixed `/api`. Everything except register/login/the public ticket lookup requires a `Authorization: Bearer <token>` header (Sanctum).
 
-## Security Vulnerabilities
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/register`, `/login` | Create an account / get a token |
+| POST | `/logout` | Revoke the current token |
+| GET | `/user` | Current authenticated user |
+| GET/POST | `/events` | List / create your events |
+| GET/PUT/DELETE | `/events/{event}` | View, update, or delete one of your events (404 if it isn't yours) |
+| GET/POST | `/events/{event}/guests` | List / add guests for one of your events |
+| DELETE | `/events/{event}/guests/{guest}` | Remove a guest |
+| POST | `/guests/checkin` | Look up a guest by their QR code and mark them checked in (idempotent) |
+| GET | `/guests/ticket/{code}` | Public, no auth — a guest's own ticket info, used by the shareable ticket link |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Testing
 
-## License
+The test suite checks two things: that login/signup work correctly, and — more importantly — that a user can only ever see or change their *own* events and guests, never someone else's.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+\`\`\`bash
+php artisan test
+\`\`\`
+
+Tests run against a temporary, throwaway database that resets every time, so they never touch real data. They also run automatically on GitHub every time code is pushed (see the green checkmark badge above).
+## Local development setup requirements
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+The frontend (another repo) expects the API at `http://127.0.0.1:8000/api` by default — see its README for setup.
