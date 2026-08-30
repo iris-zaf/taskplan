@@ -7,6 +7,11 @@ A full-stack event planning app: create events, manage a guest list per event, g
 
 ![Tests](https://github.com/iris-zaf/taskplan/actions/workflows/tests.yml/badge.svg)
 
+## Screenshots
+
+![Homepage](https://raw.githubusercontent.com/iris-zaf/taskplan-frontend/main/docs/screenshots/homepage.png)
+![Dashboard](https://raw.githubusercontent.com/iris-zaf/taskplan-frontend/main/docs/screenshots/dashboard.png)
+
 ## What it does
 
 - Register/log in, and manage your own events . Every account only ever sees its own data.
